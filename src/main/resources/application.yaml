@@ -1,0 +1,20 @@
+spring:
+  application:
+    name: camel-json-router
+
+camel:
+  component:
+    platform-http:
+      enabled: true
+  rest:
+    binding-mode: off
+    enable-cors: true
+
+logging:
+  level:
+    root: INFO
+
+api2api:
+  endpoint:
+    a: http://localhost:9090/external/a
+    b: http://localhost:9090/external/b

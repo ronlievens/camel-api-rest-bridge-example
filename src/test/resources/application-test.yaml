@@ -1,0 +1,19 @@
+camel:
+  main:
+    tracing: true
+    tracing-logging-format: '%-4.4s [%-30.30s] [%-50.50s]'
+
+
+logging:
+  level:
+    #    org.apache.camel: DEBUG
+    org.apache.camel.processor.interceptor: TRACE
+    org:
+      apache:
+        hc:
+          client5:
+            http:
+              wire:
+                level: TRACE
+              headers:
+                level: DEBUG
