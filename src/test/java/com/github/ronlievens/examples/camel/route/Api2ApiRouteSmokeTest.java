@@ -94,7 +94,7 @@ class Api2ApiRouteSmokeTest {
         val jsonMessage = readFileAsStringFromClasspath("route-message-a.json");
         mockEndpointRouteA.expectedMessageCount(1);
         mockEndpointRouteB.expectedMessageCount(0);
-        wireMockServer.stubFor(post(urlEqualTo("/a"))
+        wireMockServer.stubFor(post(urlEqualTo("/a/my-route?test=iets&nog=iets"))
             .willReturn(
                 ok()
                     .withHeader("Content-Type", "application/json")
@@ -108,7 +108,7 @@ class Api2ApiRouteSmokeTest {
             .body(jsonMessage)
             .log().all()
             .when()
-            .post("/my-route")
+            .post("/my-route?test=iets&nog=iets")
             .then()
             .log().all()
             .extract()
