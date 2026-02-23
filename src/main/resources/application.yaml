@@ -2,14 +2,6 @@ spring:
   application:
     name: camel-json-router
 
-camel:
-  component:
-    platform-http:
-      enabled: true
-  rest:
-    binding-mode: off
-    enable-cors: true
-
 logging:
   level:
     root: INFO
