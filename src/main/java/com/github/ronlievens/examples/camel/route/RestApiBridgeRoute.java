@@ -21,7 +21,7 @@ public class RestApiBridgeRoute extends RouteBuilder {
 
         from("direct:routeA")
             .routeId("route-A")
-            .log("Route A ontvangen: bridgePath=${exchangeProperty.bridgePath} bridgeQuery=${exchangeProperty.bridgeQuery}")
+            .log("Route A ontvangen: bridgePath=${header.CamelHttpPath} bridgeQuery=${header.CamelHttpQuery}")
             .filter(new PredicateA())
             .toD("{{api2api.endpoint.a}}${header.CamelHttpPath}?bridgeEndpoint=true");
 
