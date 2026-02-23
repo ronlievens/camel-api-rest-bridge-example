@@ -10,12 +10,7 @@ public class RestApiBridgeRoute extends RouteBuilder {
 
     @Override
     public void configure() {
-        restConfiguration()
-            .component("platform-http");
-
-        rest("/my-route")
-            .post()
-            .consumes("application/json")
+        from("platform-http:/*")
             .to("direct:processRoute");
 
         from("direct:processRoute")
