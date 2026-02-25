@@ -8,6 +8,9 @@ import org.springframework.stereotype.Component;
 @Component
 public class RestApiBridgeRoute extends RouteBuilder {
 
+    public static final String ROUTE_ID_A = "route-A";
+    public static final String ROUTE_ID_B = "route-B";
+
     @Override
     public void configure() {
         from("servlet:*")
@@ -20,13 +23,13 @@ public class RestApiBridgeRoute extends RouteBuilder {
             .end();
 
         from("direct:routeA")
-            .routeId("route-A")
+            .routeId(ROUTE_ID_A)
             .log("Route A ontvangen: bridgePath=${header.CamelHttpPath} bridgeQuery=${header.CamelHttpQuery}")
             .filter(new PredicateA())
             .toD("{{api2api.endpoint.a}}${header.CamelHttpPath}?bridgeEndpoint=true");
 
         from("direct:routeB")
-            .routeId("route-B")
+            .routeId(ROUTE_ID_B)
             .log("Route B ontvangen")
             .filter(new PredicateB())
             .toD("{{api2api.endpoint.b}}?bridgeEndpoint=true");

@@ -15,7 +15,7 @@
     <version>1.0.0-SNAPSHOT</version>
 
     <properties>
-        <jdk.version>25</jdk.version>
+        <jdk.version>21</jdk.version>
 
         <spring-boot.version>3.5.11</spring-boot.version>
         <lombok.version>1.18.42</lombok.version>

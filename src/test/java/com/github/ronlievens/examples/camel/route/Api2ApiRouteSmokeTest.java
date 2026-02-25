@@ -18,10 +18,13 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.http.MediaType;
+import org.springframework.test.annotation.DirtiesContext;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 
+import static com.github.ronlievens.examples.camel.route.RestApiBridgeRoute.ROUTE_ID_A;
+import static com.github.ronlievens.examples.camel.route.RestApiBridgeRoute.ROUTE_ID_B;
 import static com.github.ronlievens.examples.camel.util.AssertUtils.readFileAsStringFromClasspath;
 import static com.github.tomakehurst.wiremock.client.WireMock.*;
 import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMockConfig;
@@ -30,9 +33,13 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
+@DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
 @CamelSpringBootTest
 @UseAdviceWith
 class Api2ApiRouteSmokeTest {
+
+    public static final String MOCK_ROUTE_A = "mock:" + ROUTE_ID_A;
+    public static final String MOCK_ROUTE_B = "mock:" + ROUTE_ID_B;
 
     private final static String API2API_ENDPOINT_A = "http://localhost:%d/a";
     private final static String API2API_ENDPOINT_B = "http://localhost:%d/b";
@@ -47,20 +54,23 @@ class Api2ApiRouteSmokeTest {
     private int port;
 
     @RegisterExtension
-    static WireMockExtension wireMockServer = WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
+    static WireMockExtension wireMockServerA = WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
+
+    @RegisterExtension
+    static WireMockExtension wireMockServerB = WireMockExtension.newInstance().options(wireMockConfig().dynamicPort()).build();
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
-        endpointA = API2API_ENDPOINT_A.formatted(wireMockServer.getPort());
-        endpointB = API2API_ENDPOINT_B.formatted(wireMockServer.getPort());
+        endpointA = API2API_ENDPOINT_A.formatted(wireMockServerA.getPort());
+        endpointB = API2API_ENDPOINT_B.formatted(wireMockServerB.getPort());
         registry.add("api2api.endpoint.a", () -> endpointA);
         registry.add("api2api.endpoint.b", () -> endpointB);
     }
 
-    @EndpointInject("mock:routeA")
+    @EndpointInject(MOCK_ROUTE_A)
     MockEndpoint mockEndpointRouteA;
 
-    @EndpointInject("mock:routeB")
+    @EndpointInject(MOCK_ROUTE_B)
     MockEndpoint mockEndpointRouteB;
 
 
@@ -74,8 +84,8 @@ class Api2ApiRouteSmokeTest {
         RestAssured.baseURI = "http://localhost";
         RestAssured.port = port;
 
-        adviceWith(camelContext, "route-A", a -> a.weaveAddLast().to("mock:endpointA"));
-        adviceWith(camelContext, "route-B", a -> a.weaveAddLast().to("mock:endpointB"));
+        adviceWith(camelContext, ROUTE_ID_A, a -> a.weaveAddLast().to(MOCK_ROUTE_A));
+        adviceWith(camelContext, ROUTE_ID_B, a -> a.weaveAddLast().to(MOCK_ROUTE_B));
 
         camelContext.start();
     }
@@ -85,7 +95,8 @@ class Api2ApiRouteSmokeTest {
         mockEndpointRouteA.reset();
         mockEndpointRouteB.reset();
 
-        wireMockServer.resetAll();
+        wireMockServerA.resetAll();
+        wireMockServerB.resetAll();
     }
 
     @Test
@@ -94,7 +105,7 @@ class Api2ApiRouteSmokeTest {
         val jsonMessage = readFileAsStringFromClasspath("route-message-a.json");
         mockEndpointRouteA.expectedMessageCount(1);
         mockEndpointRouteB.expectedMessageCount(0);
-        wireMockServer.stubFor(post(urlEqualTo("/a/my-route?test=iets&nog=iets"))
+        wireMockServerA.stubFor(post(urlEqualTo("/a/my-route?test=iets&nog=iets"))
             .willReturn(
                 ok()
                     .withHeader("Content-Type", "application/json")
@@ -118,6 +129,9 @@ class Api2ApiRouteSmokeTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.asString()).isNotBlank();
         JSONAssert.assertEquals(response.asString(), jsonMessage, true);
+
+        mockEndpointRouteA.assertIsSatisfied();
+        mockEndpointRouteB.assertIsSatisfied();
     }
 
     @Test
@@ -126,7 +140,7 @@ class Api2ApiRouteSmokeTest {
         val jsonMessage = readFileAsStringFromClasspath("route-message-b.json");
         mockEndpointRouteA.expectedMessageCount(0);
         mockEndpointRouteB.expectedMessageCount(1);
-        wireMockServer.stubFor(post(urlEqualTo("/b"))
+        wireMockServerB.stubFor(post(urlEqualTo("/b"))
             .willReturn(
                 ok()
                     .withHeader("Content-Type", "application/json")
@@ -150,6 +164,9 @@ class Api2ApiRouteSmokeTest {
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.asString()).isNotBlank();
         JSONAssert.assertEquals(response.asString(), jsonMessage, true);
+
+        mockEndpointRouteA.assertIsSatisfied();
+        mockEndpointRouteB.assertIsSatisfied();
     }
 
     @Test
@@ -174,6 +191,9 @@ class Api2ApiRouteSmokeTest {
         // THEN
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.asString()).isBlank();
+
+        mockEndpointRouteA.assertIsSatisfied();
+        mockEndpointRouteB.assertIsSatisfied();
     }
 
     @Test
@@ -198,5 +218,8 @@ class Api2ApiRouteSmokeTest {
         // THEN
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.asString()).isBlank();
+
+        mockEndpointRouteA.assertIsSatisfied();
+        mockEndpointRouteB.assertIsSatisfied();
     }
 }
