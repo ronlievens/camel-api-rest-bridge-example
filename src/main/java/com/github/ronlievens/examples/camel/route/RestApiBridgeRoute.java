@@ -10,7 +10,7 @@ public class RestApiBridgeRoute extends RouteBuilder {
 
     @Override
     public void configure() {
-        from("platform-http:/*")
+        from("servlet:*")
             .to("direct:processRoute");
 
         from("direct:processRoute")

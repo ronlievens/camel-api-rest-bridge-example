@@ -2,6 +2,11 @@ spring:
   application:
     name: camel-json-router
 
+camel:
+  servlet:
+    mapping:
+      contextPath: /*
+
 logging:
   level:
     root: INFO
