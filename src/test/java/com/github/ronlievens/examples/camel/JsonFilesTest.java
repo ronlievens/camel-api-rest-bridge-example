@@ -30,7 +30,7 @@ class JsonFilesTest {
     }
 
     void testMessage(@NonNull String type) throws Exception {
-        val jsonMessage = readFileAsStringFromClasspath("route-message-%s.json".formatted(type));
+        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-%s.json".formatted(type));
         JsonNode root = objectMapper.readTree(jsonMessage);
 
         assertThat(root.has("type")).as("Expected root JSON object to contain field 'type'").isTrue();

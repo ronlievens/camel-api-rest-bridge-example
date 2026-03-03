@@ -8,6 +8,7 @@ import org.apache.camel.EndpointInject;
 import org.apache.camel.component.mock.MockEndpoint;
 import org.apache.camel.test.spring.junit5.CamelSpringBootTest;
 import org.apache.camel.test.spring.junit5.UseAdviceWith;
+import org.apache.http.HttpHeaders;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
@@ -102,14 +103,14 @@ class Api2ApiRouteSmokeTest {
     @Test
     void testRouteA() throws Exception {
         // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("route-message-a.json");
+        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-a.json");
         mockEndpointRouteA.expectedMessageCount(1);
         mockEndpointRouteB.expectedMessageCount(1);
         wireMockServerA.stubFor(post(urlEqualTo("/a/my-route?test=iets&nog=iets"))
             .willReturn(
                 ok()
-                    .withHeader("Content-Type", "application/json")
-                    .withBody(jsonMessage)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .withBodyFile("route-message-a.json")
 
             ));
 
@@ -137,14 +138,14 @@ class Api2ApiRouteSmokeTest {
     @Test
     void testRouteB() throws Exception {
         // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("route-message-b.json");
+        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-b.json");
         mockEndpointRouteA.expectedMessageCount(1);
         mockEndpointRouteB.expectedMessageCount(1);
         wireMockServerB.stubFor(post(urlEqualTo("/b"))
             .willReturn(
                 ok()
-                    .withHeader("Content-Type", "application/json")
-                    .withBody(jsonMessage)
+                    .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .withBodyFile("route-message-b.json")
 
             ));
 
@@ -172,7 +173,7 @@ class Api2ApiRouteSmokeTest {
     @Test
     void testRouteX() throws Exception {
         // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("route-message-x.json");
+        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-x.json");
         mockEndpointRouteA.expectedMessageCount(0);
         mockEndpointRouteB.expectedMessageCount(0);
 
@@ -199,7 +200,7 @@ class Api2ApiRouteSmokeTest {
     @Test
     void testRouteNonsense() throws Exception {
         // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("route-message-nonsense.json");
+        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-nonsense.json");
         mockEndpointRouteA.expectedMessageCount(0);
         mockEndpointRouteB.expectedMessageCount(0);
 
