@@ -8,7 +8,7 @@ import org.apache.camel.Exchange;
 import org.apache.camel.Predicate;
 
 @Slf4j
-public final class PredicateA implements Predicate {
+public class PredicateA implements Predicate {
 
     private static final ObjectMapper JSON_MAPPER = new ObjectMapper();
 
@@ -22,7 +22,10 @@ public final class PredicateA implements Predicate {
 
             val root = JSON_MAPPER.readTree(body);
             val type = root.path("type").asText(null);
-            return "A".equals(type);
+
+            val result = "A".equalsIgnoreCase(type);
+            log.trace("PredicateB result: {}", result);
+            return result;
         } catch (JsonProcessingException e) {
             log.warn("Unable to parse JSON message", e);
         }

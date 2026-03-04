@@ -2,6 +2,9 @@ package com.github.ronlievens.examples.camel.route;
 
 import com.github.tomakehurst.wiremock.junit5.WireMockExtension;
 import io.restassured.RestAssured;
+import io.restassured.response.Response;
+import lombok.NonNull;
+import lombok.extern.slf4j.Slf4j;
 import lombok.val;
 import org.apache.camel.CamelContext;
 import org.apache.camel.EndpointInject;
@@ -14,7 +17,6 @@ import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.RegisterExtension;
-import org.skyscreamer.jsonassert.JSONAssert;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.web.server.LocalServerPort;
@@ -32,6 +34,7 @@ import static com.github.tomakehurst.wiremock.core.WireMockConfiguration.wireMoc
 import static org.apache.camel.builder.AdviceWith.adviceWith;
 import static org.assertj.core.api.Assertions.assertThat;
 
+@Slf4j
 @ActiveProfiles("test")
 @SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT)
 @DirtiesContext(classMode = DirtiesContext.ClassMode.AFTER_EACH_TEST_METHOD)
@@ -42,8 +45,8 @@ class Api2ApiRouteSmokeTest {
     public static final String MOCK_ROUTE_A = "mock:" + ROUTE_ID_A;
     public static final String MOCK_ROUTE_B = "mock:" + ROUTE_ID_B;
 
-    private final static String API2API_ENDPOINT_A = "http://localhost:%d/a";
-    private final static String API2API_ENDPOINT_B = "http://localhost:%d/b";
+    private final static String TEST_ENDPOINT_PATH = "/my-route?test=iets&nog=iets";
+    private final static String API2API_ENDPOINT = "http://localhost:%d";
 
     private static String endpointA;
     private static String endpointB;
@@ -62,8 +65,8 @@ class Api2ApiRouteSmokeTest {
 
     @DynamicPropertySource
     static void setProperties(DynamicPropertyRegistry registry) {
-        endpointA = API2API_ENDPOINT_A.formatted(wireMockServerA.getPort());
-        endpointB = API2API_ENDPOINT_B.formatted(wireMockServerB.getPort());
+        endpointA = API2API_ENDPOINT.formatted(wireMockServerA.getPort());
+        endpointB = API2API_ENDPOINT.formatted(wireMockServerB.getPort());
         registry.add("api2api.endpoint.a", () -> endpointA);
         registry.add("api2api.endpoint.b", () -> endpointB);
     }
@@ -86,7 +89,7 @@ class Api2ApiRouteSmokeTest {
         RestAssured.port = port;
 
         adviceWith(camelContext, ROUTE_ID_A, a -> a.weaveAddLast().to(MOCK_ROUTE_A));
-        adviceWith(camelContext, ROUTE_ID_B, a -> a.weaveAddLast().to(MOCK_ROUTE_B));
+        adviceWith(camelContext, ROUTE_ID_B, b -> b.weaveAddLast().to(MOCK_ROUTE_B));
 
         camelContext.start();
     }
@@ -100,127 +103,100 @@ class Api2ApiRouteSmokeTest {
         wireMockServerB.resetAll();
     }
 
-    @Test
-    void testRouteA() throws Exception {
+    private Response fireTest(String requestUrl, @NonNull String type) throws Exception {
         // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-a.json");
+        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-%s.json".formatted(type));
         mockEndpointRouteA.expectedMessageCount(1);
         mockEndpointRouteB.expectedMessageCount(1);
-        wireMockServerA.stubFor(post(urlEqualTo("/a/my-route?test=iets&nog=iets"))
+        wireMockServerA.stubFor(post(urlEqualTo(requestUrl))
             .willReturn(
                 ok()
                     .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .withBodyFile("route-message-a.json")
-
+                    .withBodyFile("route-message-%s.json".formatted(type))
+            ));
+        wireMockServerB.stubFor(post(urlEqualTo(requestUrl))
+            .willReturn(
+                ok()
+                    .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
+                    .withBodyFile("route-message-%s.json".formatted(type))
             ));
 
         // WHEN
-        val response = RestAssured.given()
+        return RestAssured.given()
             .contentType(MediaType.APPLICATION_JSON_VALUE)
             .body(jsonMessage)
             .log().all()
             .when()
-            .post("/my-route?test=iets&nog=iets")
+            .post(requestUrl)
             .then()
             .log().all()
             .extract()
             .response();
+    }
+
+    @Test
+    void testRouteA() throws Exception {
+        // WHEN
+        val response = fireTest(TEST_ENDPOINT_PATH, "a");
 
         // THEN
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.asString()).isNotBlank();
-        JSONAssert.assertEquals(response.asString(), jsonMessage, true);
 
         mockEndpointRouteA.assertIsSatisfied();
         mockEndpointRouteB.assertIsSatisfied();
+
+        wireMockServerA.verify(1, postRequestedFor(urlEqualTo(TEST_ENDPOINT_PATH)));
+        wireMockServerA.verify(1, anyRequestedFor(anyUrl()));
+        wireMockServerB.verify(0, anyRequestedFor(anyUrl()));
     }
 
     @Test
     void testRouteB() throws Exception {
-        // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-b.json");
-        mockEndpointRouteA.expectedMessageCount(1);
-        mockEndpointRouteB.expectedMessageCount(1);
-        wireMockServerB.stubFor(post(urlEqualTo("/b"))
-            .willReturn(
-                ok()
-                    .withHeader(HttpHeaders.CONTENT_TYPE, MediaType.APPLICATION_JSON_VALUE)
-                    .withBodyFile("route-message-b.json")
-
-            ));
-
         // WHEN
-        val response = RestAssured.given()
-            .contentType(MediaType.APPLICATION_JSON_VALUE)
-            .body(jsonMessage)
-            .log().all()
-            .when()
-            .post("/my-route")
-            .then()
-            .log().all()
-            .extract()
-            .response();
+        val response = fireTest(TEST_ENDPOINT_PATH, "b");
 
         // THEN
         assertThat(response.statusCode()).isEqualTo(200);
         assertThat(response.asString()).isNotBlank();
-        JSONAssert.assertEquals(response.asString(), jsonMessage, true);
 
         mockEndpointRouteA.assertIsSatisfied();
         mockEndpointRouteB.assertIsSatisfied();
+
+        wireMockServerA.verify(0, anyRequestedFor(anyUrl()));
+        wireMockServerB.verify(1, postRequestedFor(urlEqualTo(TEST_ENDPOINT_PATH)));
+        wireMockServerB.verify(1, anyRequestedFor(anyUrl()));
     }
 
     @Test
     void testRouteX() throws Exception {
-        // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-x.json");
-        mockEndpointRouteA.expectedMessageCount(0);
-        mockEndpointRouteB.expectedMessageCount(0);
-
         // WHEN
-        val response = RestAssured.given()
-            .contentType(MediaType.APPLICATION_JSON_VALUE)
-            .body(jsonMessage)
-            .log().all()
-            .when()
-            .post("/my-route")
-            .then()
-            .log().all()
-            .extract()
-            .response();
+        val response = fireTest(TEST_ENDPOINT_PATH, "x");
 
         // THEN
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.asString()).isBlank();
+        assertThat(response.asString()).isNotBlank();
 
         mockEndpointRouteA.assertIsSatisfied();
         mockEndpointRouteB.assertIsSatisfied();
+
+        wireMockServerA.verify(0, anyRequestedFor(anyUrl()));
+        wireMockServerB.verify(0, anyRequestedFor(anyUrl()));
     }
 
     @Test
     void testRouteNonsense() throws Exception {
-        // GIVEN
-        val jsonMessage = readFileAsStringFromClasspath("__files/route-message-nonsense.json");
-        mockEndpointRouteA.expectedMessageCount(0);
-        mockEndpointRouteB.expectedMessageCount(0);
-
         // WHEN
-        val response = RestAssured.given()
-            .contentType(MediaType.APPLICATION_JSON_VALUE)
-            .body(jsonMessage)
-            .log().all()
-            .when()
-            .post("/my-route")
-            .then()
-            .log().all()
-            .extract()
-            .response();
+        val response = fireTest(TEST_ENDPOINT_PATH, "nonsense");
 
         // THEN
         assertThat(response.statusCode()).isEqualTo(200);
-        assertThat(response.asString()).isBlank();
+        assertThat(response.asString()).isNotBlank();
 
         mockEndpointRouteA.assertIsSatisfied();
         mockEndpointRouteB.assertIsSatisfied();
+
+        wireMockServerA.verify(0, anyRequestedFor(anyUrl()));
+        wireMockServerB.verify(0, anyRequestedFor(anyUrl()));
     }
 }

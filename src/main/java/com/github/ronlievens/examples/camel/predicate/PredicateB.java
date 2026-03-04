@@ -22,7 +22,10 @@ public class PredicateB implements Predicate {
 
             val root = JSON_MAPPER.readTree(body);
             val type = root.path("type").asText(null);
-            return "B".equals(type);
+
+            val result = "B".equalsIgnoreCase(type);
+            log.trace("PredicateB result: {}", result);
+            return result;
         } catch (JsonProcessingException e) {
             log.warn("Unable to parse JSON message", e);
         }

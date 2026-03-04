@@ -19,7 +19,7 @@ public abstract class PredicateAbstractTest {
     protected abstract Predicate getPredicateToTest();
 
     protected Exchange loadExchange(@NonNull String type) throws IOException {
-        val body = readFileAsStringFromClasspath("route-message-%s.json".formatted(type));
+        val body = readFileAsStringFromClasspath("__files/route-message-%s.json".formatted(type));
         CamelContext context = new DefaultCamelContext();
         Exchange exchange = new DefaultExchange(context);
         exchange.getIn().setBody(body);

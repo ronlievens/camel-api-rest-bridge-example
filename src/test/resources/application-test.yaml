@@ -1,4 +1,8 @@
 logging:
   level:
-    root: DEBUG
-    org.springframework: INFO
+    root: INFO
+    com:
+      github:
+        ronlievens:
+          examples:
+            camel: TRACE
